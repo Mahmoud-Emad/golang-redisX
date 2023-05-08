@@ -15,7 +15,7 @@ func initTerminal(server *RespServer) Terminal {
 	return Terminal{server: server}
 }
 
-func (trm Terminal) welcome() {
+func (trm Terminal) Welcome() {
 	// Function to print a hello message when starting the server.
 	color.White("\n🪄 : Initializing the server")
 	fmt.Println(strings.Repeat("-", 75))

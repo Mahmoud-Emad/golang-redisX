@@ -51,7 +51,7 @@ func (s *RespServer) RunAndWait() {
 	}
 
 	terminal := initTerminal(s)
-	terminal.welcome()
+	terminal.Welcome()
 
 	for {
 		conn, err := ln.Accept()
