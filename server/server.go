@@ -43,21 +43,16 @@ func handleConnection(conn net.Conn) {
 }
 
 func (s *RespServer) RunAndWait() {
+	terminal := initTerminal(s)
 	ln, err := net.Listen(s.network, s.host+":"+s.port)
 	if err != nil {
-		fmt.Println("Failed to bind to port" + s.port)
-		fmt.Println(err.Error())
-		os.Exit(1)
+		terminal.RaisError("Failed to bind to port "+s.port, err)
 	}
-
-	terminal := initTerminal(s)
 	terminal.Welcome()
-
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
-			fmt.Println("Error accepting connection: ", err.Error())
-			os.Exit(1)
+			terminal.RaisError("Error accepting connection", err)
 		}
 
 		go handleConnection(conn)
