@@ -1,10 +1,13 @@
 package server
 
 import (
+	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"net"
-	"os"
+
+	"github.com/Mahmoud-Emad/redisX/resp"
 )
 
 type RespServer struct {
@@ -25,20 +28,27 @@ func handleConnection(conn net.Conn) {
 	defer conn.Close()
 
 	for {
-		buf := make([]byte, 1024)
 
-		if _, err := conn.Read(buf); err != nil {
-			if err == io.EOF {
-				break
-			} else {
-				fmt.Println("error reading from client: ", err.Error())
-				os.Exit(1)
-			}
+		value, err := resp.DecodeRESP(bufio.NewReader(conn))
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		if err != nil {
+			fmt.Println("Error decoding RESP: ", err.Error())
+			return
 		}
 
-		// Let's ignore the client's input for now and hardcode a response.
-		// We'll implement a proper Redis Protocol parser in later stages.
-		conn.Write([]byte("+PONG\r\n"))
+		command := value.Array()[0].String()
+		args := value.Array()[1:]
+
+		switch command {
+		case "ping":
+			conn.Write([]byte("+PONG\r\n"))
+		case "echo":
+			conn.Write([]byte(fmt.Sprintf("$%d\r\n%s\r\n", len(args[0].String()), args[0].String())))
+		default:
+			conn.Write([]byte("-ERR unknown command '" + command + "'\r\n"))
+		}
 	}
 }
 
@@ -54,7 +64,6 @@ func (s *RespServer) RunAndWait() {
 		if err != nil {
 			terminal.RaisError("Error accepting connection", err)
 		}
-
 		go handleConnection(conn)
 	}
 }

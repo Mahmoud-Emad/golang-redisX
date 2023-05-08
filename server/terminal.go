@@ -12,12 +12,13 @@ type Terminal struct {
 	server *RespServer
 }
 
+// Init an instance frm the terminal struct to interact with it's methods.
 func initTerminal(server *RespServer) Terminal {
 	return Terminal{server: server}
 }
 
+// TODO: To close using the os module, add the status code as a parameter to modify it.
 func (trm Terminal) terminate() {
-	// TODO: To close using the os module, add the status code as a parameter to modify it.
 	os.Exit(1)
 }
 
@@ -27,8 +28,8 @@ func (trm Terminal) RaisError(message string, err error) {
 	trm.terminate()
 }
 
+// Function to print a hello message when starting the server.
 func (trm Terminal) Welcome() {
-	// Function to print a hello message when starting the server.
 	color.White("\n🪄 Initializing the server")
 	fmt.Println(strings.Repeat("-", 75))
 	color.Cyan(`

@@ -2,76 +2,127 @@ package resp
 
 import (
 	"bufio"
-	"errors"
+	"fmt"
 	"io"
 	"strconv"
 )
 
+// Type represents a Value type
+type Type byte
+
 const (
-	READER_INITIAL_SIZE = 32 * 1024
+	SimpleString Type = '+'
+	BulkString   Type = '$'
+	Array        Type = '*'
 )
 
-type RESPReader struct {
-	*bufio.Reader
+// Value represents the data of a valid RESP type.
+type Value struct {
+	typ   Type
+	bytes []byte
+	array []Value
 }
 
-func NewReader(reader io.Reader) *RESPReader {
-	return &RESPReader{
-		Reader: bufio.NewReaderSize(reader, READER_INITIAL_SIZE),
+// If Value cannot be converted, an empty string is returned.
+func (v Value) String() string {
+	if v.typ == BulkString || v.typ == SimpleString {
+		return string(v.bytes)
 	}
+	return ""
 }
 
-// this function expects only a RESP Array consisting of only Bulk Strings
-// this is how redis sends commands to the server
-func (r *RESPReader) ParseCommand() (string, []string, error) {
-	// validate type
-	firstToken, err := r.ReadBytes(byte('\n'))
-	if err != nil {
-		return "", nil, errors.New("can't find delimiter! can't parse the array\n" + err.Error())
+// Array converts Value to an array.
+//
+// If Value cannot be converted, an empty array is returned.
+func (v Value) Array() []Value {
+	if v.typ == Array {
+		return v.array
 	}
-	if firstToken[0] != ARRAY {
-		return "", nil, errors.New("not array! can't parse the bulk string ")
-	}
-	i64, _ := strconv.ParseInt(string(firstToken[1:len(firstToken)-2]), 10, 0)
-	_len := int(i64)
+	return []Value{}
+}
 
-	if _len < 1 {
-		return "", nil, errors.New("len < 1! can't parse the command " + string(firstToken))
-	}
-	cmd, err := r.ReadBulkString()
+func DecodeRESP(byteStream *bufio.Reader) (Value, error) {
+	dataTypeByte, err := byteStream.ReadByte()
 	if err != nil {
-		return "", nil, err
+		return Value{}, err
 	}
-	var args []string
-	for i := 1; i < _len; i++ {
-		arg, err := r.ReadBulkString()
+
+	switch string(dataTypeByte) {
+	case "+":
+		return decodeSimpleString(byteStream)
+	case "$":
+		return decodeBulkString(byteStream)
+	case "*":
+		return decodeArray(byteStream)
+	}
+
+	return Value{}, fmt.Errorf("invalid RESP data type byte: %s", string(dataTypeByte))
+}
+
+func decodeSimpleString(byteStream *bufio.Reader) (Value, error) {
+	readBytes, err := readUntilCRLF(byteStream)
+	if err != nil {
+		return Value{}, err
+	}
+	return Value{
+		typ:   SimpleString,
+		bytes: readBytes,
+	}, nil
+}
+
+func decodeBulkString(byteStream *bufio.Reader) (Value, error) {
+	readBytesForCount, err := readUntilCRLF(byteStream)
+	if err != nil {
+		return Value{}, fmt.Errorf("failed to read bulk string length: %s", err)
+	}
+	count, err := strconv.Atoi(string(readBytesForCount))
+	if err != nil {
+		return Value{}, fmt.Errorf("failed to parse bulk string length: %s", err)
+	}
+	readBytes := make([]byte, count+2)
+	if _, err := io.ReadFull(byteStream, readBytes); err != nil {
+		return Value{}, fmt.Errorf("failed to read bulk string contents: %s", err)
+	}
+	return Value{
+		typ:   BulkString,
+		bytes: readBytes[:count],
+	}, nil
+}
+
+func decodeArray(byteStream *bufio.Reader) (Value, error) {
+	readBytesForCount, err := readUntilCRLF(byteStream)
+	if err != nil {
+		return Value{}, fmt.Errorf("failed to read bulk string length: %s", err)
+	}
+	count, err := strconv.Atoi(string(readBytesForCount))
+	if err != nil {
+		return Value{}, fmt.Errorf("failed to parse bulk string length: %s", err)
+	}
+	array := []Value{}
+	for i := 1; i <= count; i++ {
+		value, err := DecodeRESP(byteStream)
 		if err != nil {
-			return "", nil, err
+			return Value{}, err
 		}
-		args = append(args, arg)
+		array = append(array, value)
 	}
-
-	return cmd, args, nil
-
+	return Value{
+		typ:   Array,
+		array: array,
+	}, nil
 }
 
-// parse a bulk string from the reader and advance it to next token
-func (r *RESPReader) ReadBulkString() (string, error) {
-	firstToken, err := r.ReadBytes(byte('\n'))
-	if err != nil {
-		return "", errors.New("can't find delimiter! can't parse the bulk string\n" + err.Error())
+func readUntilCRLF(byteStream *bufio.Reader) ([]byte, error) {
+	readBytes := []byte{}
+	for {
+		b, err := byteStream.ReadBytes('\n')
+		if err != nil {
+			return nil, err
+		}
+		readBytes = append(readBytes, b...)
+		if len(readBytes) >= 2 && readBytes[len(readBytes)-2] == '\r' {
+			break
+		}
 	}
-	if firstToken[0] != BULK_STRING {
-		return "", errors.New("not bulk string! can't parse the bulk string ")
-	}
-	i64, _ := strconv.ParseInt(string(firstToken[1:len(firstToken)-2]), 10, 0)
-	_len := int(i64)
-	// TODO: handle empty 0 and null -1
-	buf := make([]byte, _len)
-	n, _ := io.ReadFull(r, buf)
-	if n != _len {
-		return "", errors.New("can't parse the bulk string")
-	}
-	r.Discard(2)
-	return string(buf), nil
+	return readBytes[:len(readBytes)-2], nil
 }
