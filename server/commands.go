@@ -1,9 +1,9 @@
 package server
+import "fmt"
 
 
 type Command struct{
 	name string
-	argsType []string
-	callableFunction func
-	
+	withArgs bool
+	callableFunction func()
 }
