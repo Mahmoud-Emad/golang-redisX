@@ -24,6 +24,14 @@ func New(host string, port string, network string) RespServer {
 	}
 }
 
+func initCommand() Command {
+	return Command{
+		name:             "",
+		withArgs:         false,
+		callableFunction: nil,
+	}
+}
+
 func handleConnection(conn net.Conn) {
 	defer conn.Close()
 

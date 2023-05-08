@@ -5,11 +5,3 @@ type Command struct {
 	withArgs         bool
 	callableFunction func()
 }
-
-func initCommand() Command {
-	return Command{
-		name:             "",
-		withArgs:         false,
-		callableFunction: nil,
-	}
-}

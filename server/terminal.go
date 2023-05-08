@@ -3,7 +3,6 @@ package server
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/fatih/color"
 )
@@ -30,17 +29,19 @@ func (trm Terminal) RaisError(message string, err error) {
 
 // Function to print a hello message when starting the server.
 func (trm Terminal) Welcome() {
-	color.White("\n🪄 Initializing the server")
-	fmt.Println(strings.Repeat("-", 75))
-	color.Cyan(`
-	_____          _ _    __   __
-	|  __ \        | (_)   \ \ / /
-	| |__) |___  __| |_ ___ \ V / 
-	|  _  // _ \/ _` + "`" + ` | / __| > <  
-	| | \ \  __/ (_| | \__ \/ . \ 
-	|_|  \_\___|\__,_|_|___/_/ \_\
+	color.Green("\n🪄  Initializing the server")
+	color.White(`
+			 _____         __ _    __   __
+			|  __ \        | (_)   \ \ / /
+			| |__) |___  __| | |___ \ V / 
+			|  _  // _ \/ _` + "`" + ` | / __| > <  
+			| | \ \  __/ (_| | \__ \/ . \ 
+			|_|  \_\___|\__,_|_|___/_/ \_\
 	`)
-	fmt.Println("a simple and small redis-server that can handle the requests that sent from the redis-cli.")
-	fmt.Println(strings.Repeat("-", 75))
-	color.Blue("\n🚀 Started RedisX server at %s", trm.server.port)
+	fmt.Printf(
+		"a simple and small %s that can handle the requests that sent from the %s.\n",
+		color.GreenString("redis-server"),
+		color.GreenString("redis-cli"),
+	)
+	color.Green("\n🚀 Started RedisX server at %s\n\n", trm.server.port)
 }
