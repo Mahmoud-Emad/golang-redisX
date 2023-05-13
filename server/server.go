@@ -10,33 +10,10 @@ import (
 	"github.com/Mahmoud-Emad/redisX/resp"
 )
 
-type RespServer struct {
-	host    string
-	port    string
-	network string
-}
-
-func New(host string, port string, network string) RespServer {
-	return RespServer{
-		host,
-		port,
-		network,
-	}
-}
-
-func initCommand() Command {
-	return Command{
-		name:             "",
-		withArgs:         false,
-		callableFunction: nil,
-	}
-}
-
-func handleConnection(conn net.Conn) {
+func handleConnection(conn net.Conn, server *RespServer) {
 	defer conn.Close()
 
 	for {
-
 		value, err := resp.DecodeRESP(bufio.NewReader(conn))
 		if errors.Is(err, io.EOF) {
 			break
@@ -49,14 +26,7 @@ func handleConnection(conn net.Conn) {
 		command := value.Array()[0].String()
 		args := value.Array()[1:]
 
-		switch command {
-		case "ping":
-			conn.Write([]byte("+PONG\r\n"))
-		case "echo":
-			conn.Write([]byte(fmt.Sprintf("$%d\r\n%s\r\n", len(args[0].String()), args[0].String())))
-		default:
-			conn.Write([]byte("-ERR unknown command '" + command + "'\r\n"))
-		}
+		CheckCommand(conn, server, command, args)
 	}
 }
 
@@ -72,6 +42,23 @@ func (s *RespServer) RunAndWait() {
 		if err != nil {
 			terminal.RaisError("Error accepting connection", err)
 		}
-		go handleConnection(conn)
+		s.SetClient(conn.RemoteAddr().String())
+		terminal.onConnect(s.client.remoteAddress)
+		go handleConnection(conn, s)
+	}
+}
+
+func CheckCommand(conn net.Conn, server *RespServer, command string, args []resp.Value) {
+	for i := 0; i < len(server.Commands); i++ {
+		if command == server.Commands[i].Name {
+			response := server.Commands[i].CallableFunction()
+			value, err := resp.ParseRESPValue(response)
+			if err != nil {
+				// Handle the error.
+			}
+			conn.Write([]byte(value))
+		} else {
+			conn.Write([]byte("+Unknown Command: try to register it.\r\n"))
+		}
 	}
 }

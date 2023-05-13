@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/common-nighthawk/go-figure"
 	"github.com/fatih/color"
 )
 
@@ -30,18 +31,17 @@ func (trm Terminal) RaisError(message string, err error) {
 // Function to print a hello message when starting the server.
 func (trm Terminal) Welcome() {
 	color.Green("\n🪄  Initializing the server")
-	color.White(`
-			 _____         __ _    __   __
-			|  __ \        | (_)   \ \ / /
-			| |__) |___  __| | |___ \ V / 
-			|  _  // _ \/ _` + "`" + ` | / __| > <  
-			| | \ \  __/ (_| | \__ \/ . \ 
-			|_|  \_\___|\__,_|_|___/_/ \_\
-	`)
+	figure.NewColorFigure("RedisX", "", "green", false).Print()
 	fmt.Printf(
-		"a simple and small %s that can handle the requests that sent from the %s.\n",
+		"\na simple and small %s that can handle the requests that sent from the %s\n",
 		color.GreenString("redis-server"),
 		color.GreenString("redis-cli"),
 	)
-	color.Green("\n🚀 Started RedisX server at %s\n\n", trm.server.port)
+	color.White("\n🚀 Started RedisX server at %s\n", trm.server.port)
+}
+
+// Function to display a message on connect the client.
+func (trm Terminal) onConnect(remoteAddress string) {
+	remoteAddress = color.CyanString(remoteAddress)
+	color.White("\n👋 Client connected to the redis-server from remote address: %s\n\n", remoteAddress)
 }
