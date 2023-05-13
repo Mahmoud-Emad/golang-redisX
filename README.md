@@ -13,26 +13,41 @@ and dynamic type management.
 Make sure that you have Go installed, and that it supports go modules.
 
 ```bash
-go run server.go
+go run main.go
+# the main module added there as code example.
 ```
 
-This will open up a mock of `redis-cli`, and you can execute simple basic commands.
+This will create and run server on port 6000, you can connect on this server from the `redis-cli` client then interact with it.
+
+To have your own instance and register your custom command with its functions you can do
+
+```go
+package main
+
+import (
+ "github.com/Mahmoud-Emad/redisX/server"
+)
+
+func main() {
+  // create a new server on port 6000 
+ server := server.Init("localhost", "6000", "tcp")
+
+  // register command with name and function 
+ server.RegisterCommand("ping", false, func() string { return "PONG" })
+  // in case your function returnes array or number type, just write them as string also like  
+ server.RegisterCommand("count", false, func() string { return "123" })
+  // There are a few types doesn't implemented yet
+  
+  // Then run the server and wait for requests  
+ server.RunAndWait()
+}
+
+```
+
+and from your `redis-cli` client do
 
 ```sh
-Listening on localhost:6382
-redis-cli> GET k
-(nil)
-redis-cli> SET k 2
-OK
-redis-cli> GET k
-2
-redis-cli> GETSET foo bar
-bar
-redis-cli> 
+    redis-cli -p 6000
 ```
 
-Allowed commands are `GET`, `SET`, `DEL`, `GETSET`, `APPEND`, `SETNX`, `STRLEN`, `SETEX`.
-
-## Running tests
-
-`cd resp && go test`
+This command should connect to our server, now you cn interact with it by using your commands.
